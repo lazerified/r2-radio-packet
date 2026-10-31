@@ -1,5 +1,7 @@
 # NOTES: r2-radio-packet
 
+# TODO: pytania z pliku `R2_radio_packet_crc.md`
+
 ## Zmiany chronologicznie
 ## 1. `initialize r2-radio-packet library`
 - **Podział modułów** godnie ze specyfikacją moduły `crc` (obliczenia sumy kontrolnej) oraz `packet` (format, serializacja i parsowanie ramki).
