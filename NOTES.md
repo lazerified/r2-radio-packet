@@ -29,3 +29,21 @@ CRC-16/CCITT-FALSE a AX.25 FCS
 - Funkcje parsera i budowy ramki nie wywołują `panic`, tylko zwracają `Result<T, PacketError>`.
 - Wprowadzono traity `Display` oraz `std::error::Error`, przez co `PacketError` łączy się z biblioteką standardową `std`.
 
+## 4. `implement packet building with tests`
+#### Budowa ramki radiowej
+| preamble | sync | length | payload | crc |
+| --- | --- | --- | --- | --- |
+| 5 x 0xAA | 0x7E | 1 byte | 0..=128 bytes | 2 bytes |
+
+Uwagi co do CRC:
+- jest w formie Big-Endian (`crc.to_be_bytes()`), 
+- liczone TYLKO z 
+
+#### Wprowadzone zmiany
+- Prealokuję pamięć, wykorzystując to, że ramka ma ustalone wymiary (`Vec::with_capacity(5 + 1 + 1 + payload.len() + 2)`).
+- Spełnienie warunku `payload.len() > 128` na początku funkcji zwraca `PacketError::PayloadTooLong`.
+- Do sumy CRC wchodzi bajt zadeklarowanej długości oraz właściwy ładunek (`[length] + payload`). Preambuła i sync nie wchodzą do sumy CRC, bo ich zadaniem jest powiadomienie odbiornika, w którym momencie szumu danych zaczyna się pakiet.
+
+
+
+

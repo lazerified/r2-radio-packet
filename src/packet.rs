@@ -37,3 +37,37 @@ impl fmt::Display for PacketError {
 
 // State to the compilator that PacketError is a proper error type that should use default Rust error implementation
 impl std::error::Error for PacketError {}
+
+use crate::crc::crc16_ccitt_false;
+
+// Builds a radio packet from payload: [preamble x5] [sync x1] [length x1] [payload xN] [crc_be x2]
+pub fn build(payload: &[u8]) -> Result<Vec<u8>, PacketError> {
+    if payload.len() > 128 {
+        return Err(PacketError::PayloadTooLong { len: payload.len() });
+    }
+
+    let declared_len = payload.len() as u8;
+
+    let total_len = 5 + 1 + 1 + payload.len() + 2;
+    let mut packet = Vec::with_capacity(total_len);
+
+    // preamble (5 x 0xAA) and sync (0x7E)
+    packet.extend_from_slice(&[0xAA; 5]);
+    packet.push(0x7E);
+
+    // length byte and actual payload
+    packet.push(declared_len);
+    packet.extend_from_slice(payload);
+
+    // Creating a buffer to calculate CRC: [length] + payload
+    let mut crc_input = Vec::with_capacity(1 + payload.len());
+    crc_input.push(declared_len);
+    crc_input.extend_from_slice(payload);
+
+    let crc = crc16_ccitt_false(&crc_input);
+
+    // CRC written as Big-Endian
+    packet.extend_from_slice(&crc.to_be_bytes());
+
+    Ok(packet)
+}
