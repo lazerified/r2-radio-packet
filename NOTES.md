@@ -1,6 +1,7 @@
 # NOTES: r2-radio-packet
 
-# TODO: pytania z pliku `R2_radio_packet_crc.md`
+# TODO: pytania z pliku `R2_radio_packet_crc.md`, testy z pliku r2_vectors.json
+
 
 ## Zmiany chronologicznie
 ## 1. `initialize r2-radio-packet library`
@@ -54,6 +55,9 @@ Kolejność sprawdzania w `parse` ma znaczenie dla stabilności i bezpieczeństw
 4. `LengthMismatch` oraz `TrailingBytes` oceniają zgodność rozmiaru bufora bez uruchamiania obliczeń sumy kontrolnej.
 5. `CrcMismatch`: weryfikacja spójności danych, wykrywa uszkodzenia danych oraz nieprawidłową kolejność bajtów (np. Little-Endian).
 
-
+## 6. `finalized crate documentation, README.md and NOTES.md`
+- Re-eksporty w lib.rs. Zastosowano (`pub use packet::{...}`), co udostępnia najważniejsze API bezpośrednio z korzenia biblioteki, zachowując podział na `crc` i `packet`.
+- Kod został zweryfikowany za pomocą `clippy` z flagą `-D warnings`.
+- Dodano krótką dokumentację w `lib.rs`.
 
 
