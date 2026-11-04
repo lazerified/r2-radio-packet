@@ -28,7 +28,10 @@ impl fmt::Display for PacketError {
                 write!(f, "Length mismatch: declared {declared}, got {actual}")
             }
             Self::CrcMismatch { expected, actual } => {
-                write!(f, "CRC mismatch: expected 0x{expected:04X}, actual 0x{actual:04X}")
+                write!(
+                    f,
+                    "CRC mismatch: expected 0x{expected:04X}, actual 0x{actual:04X}"
+                )
             }
             Self::TrailingBytes { count } => write!(f, "Trailing bytes in packet: {count}"),
         }

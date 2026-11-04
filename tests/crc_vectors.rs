@@ -43,4 +43,3 @@ fn test_crc_128_bytes_sequence() {
     let data: Vec<u8> = (0x00..=0x7F).collect();
     assert_eq!(crc16_ccitt_false(&data), 0x1800);
 }
-

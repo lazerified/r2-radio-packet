@@ -1,11 +1,9 @@
-use r2_radio_packet::packet::{build, PacketError};
+use r2_radio_packet::packet::{PacketError, build};
 
 #[test]
 fn test_build_empty_payload() {
     let packet = build(b"").expect("failed to build packet");
-    let expected = [
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x7E, 0x00, 0xE1, 0xF0,
-    ];
+    let expected = [0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x7E, 0x00, 0xE1, 0xF0];
     assert_eq!(packet, expected);
 }
 

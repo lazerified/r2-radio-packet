@@ -1,12 +1,9 @@
-use r2_radio_packet::packet::{build, parse, PacketError};
+use r2_radio_packet::packet::{PacketError, build, parse};
 
 #[test]
 fn test_parse_too_short() {
     assert_eq!(parse(b""), Err(PacketError::TooShort { len: 0 }));
-    assert_eq!(
-        parse(&[0xAA; 8]),
-        Err(PacketError::TooShort { len: 8 })
-    );
+    assert_eq!(parse(&[0xAA; 8]), Err(PacketError::TooShort { len: 8 }));
 }
 
 #[test]
@@ -29,10 +26,7 @@ fn test_parse_bad_sync() {
 fn test_parse_payload_too_long() {
     let mut data = vec![0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x7E, 129]; // length 129 > 128
     data.extend_from_slice(&[0; 129 + 2]);
-    assert_eq!(
-        parse(&data),
-        Err(PacketError::PayloadTooLong { len: 129 })
-    );
+    assert_eq!(parse(&data), Err(PacketError::PayloadTooLong { len: 129 }));
 }
 
 #[test]
@@ -54,10 +48,7 @@ fn test_parse_trailing_bytes_overflow() {
     // decl. length of payload (5) < actual length (6)
     let mut data = vec![0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x7E, 5];
     data.extend_from_slice(&[0; 6 + 2]);
-    assert_eq!(
-        parse(&data),
-        Err(PacketError::TrailingBytes { count: 1 })
-    );
+    assert_eq!(parse(&data), Err(PacketError::TrailingBytes { count: 1 }));
 }
 
 #[test]
@@ -65,7 +56,10 @@ fn test_parse_crc_mismatch() {
     let mut packet = build(b"ping").expect("failed to build packet");
     let last_idx = packet.len() - 1;
     packet[last_idx] ^= 0xFF;
-    assert!(matches!(parse(&packet), Err(PacketError::CrcMismatch { .. })));
+    assert!(matches!(
+        parse(&packet),
+        Err(PacketError::CrcMismatch { .. })
+    ));
 }
 
 #[test]
@@ -73,7 +67,10 @@ fn test_parse_crc_little_endian_mismatch() {
     let mut packet = build(b"ping").expect("failed to build packet");
     let len = packet.len();
     packet.swap(len - 2, len - 1);
-    assert!(matches!(parse(&packet), Err(PacketError::CrcMismatch { .. })));
+    assert!(matches!(
+        parse(&packet),
+        Err(PacketError::CrcMismatch { .. })
+    ));
 }
 
 #[test]

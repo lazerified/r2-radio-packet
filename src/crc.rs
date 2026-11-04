@@ -1,6 +1,7 @@
 pub fn crc16_ccitt_false(data: &[u8]) -> u16 {
     let mut crc: u16 = 0xFFFF;
-    for &byte in data { // MSb first
+    for &byte in data {
+        // MSb first
         crc ^= (byte as u16) << 8;
         for _ in 0..8 {
             if (crc & 0x8000) != 0 {
