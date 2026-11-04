@@ -18,7 +18,7 @@ CRC-16/CCITT-FALSE a AX.25 FCS
 - **Różnice** CRC-16/CCITT-FALSE przetwarza bity MSB-first (poly `0x1021`, init `0xFFFF`, xorout `0x0000`). AX.25 FCS korzysta z LSB-first, używając odwróconego wielomianu `0x8408` oraz xorout `0xFFFF`, czyli rejestr na wyjściu jest negowany.
 - Problem polega na tym ze dla uzycia algorytmu z AX.25 pakiet radiowy zostałby odrzucony przez odbiornik jako uszkodzony.
 
-- **Testy** 
+- **Testy**
 `test_crc_empty_input`: Pusty bufor wejściowy `b""` nie wykonuje pętli i zwraca initial value `0xFFFF`.
 - `test_crc_standard_vector_123456789`: ten ciąg testowy dla CRC-16 zwraca `0x29B1`.
 - `test_crc_not_ax25_fcs`: czy wynik dla `"123456789"` jest rozny od `0x906E`? (poprawny wynik dla AX.25).
@@ -38,13 +38,21 @@ CRC-16/CCITT-FALSE a AX.25 FCS
 | 5 x 0xAA | 0x7E | 1 byte | 0..=128 bytes | 2 bytes |
 
 Uwagi co do CRC:
-- jest w formie Big-Endian (`crc.to_be_bytes()`), 
-- liczone TYLKO z 
+- jest w formie Big-Endian (`crc.to_be_bytes()`),
+- liczone TYLKO z [length] + payload
 
 #### Wprowadzone zmiany
 - Prealokuję pamięć, wykorzystując to, że ramka ma ustalone wymiary (`Vec::with_capacity(5 + 1 + 1 + payload.len() + 2)`).
 - Spełnienie warunku `payload.len() > 128` na początku funkcji zwraca `PacketError::PayloadTooLong`.
-- Do sumy CRC wchodzi bajt zadeklarowanej długości oraz właściwy ładunek (`[length] + payload`). Preambuła i sync nie wchodzą do sumy CRC, bo ich zadaniem jest powiadomienie odbiornika, w którym momencie szumu danych zaczyna się pakiet.
+- Do sumy CRC wchodzi bajt zadeklarowanej długości oraz właściwy ładunek (`length + payload`). Preambuła i sync nie wchodzą do sumy CRC, bo ich zadaniem jest powiadomienie odbiornika, w którym momencie szumu danych zaczyna się pakiet.
+
+## 5. `implement parse method type checking and tests`
+Kolejność sprawdzania w `parse` ma znaczenie dla stabilności i bezpieczeństwa:
+1. `data.len() < 9` (`TooShort`) eliminuje błędy wyjścia poza zakres (`panic: index out of bounds`) przy odczycie nagłówka i CRC.
+2. `BadPreamble` oraz `BadSync` wcześnie odrzuca losowy szum przed dokładniejszą analizą pakieti.
+3. `PayloadTooLong` (`declared > 128`): zabezpieczenie przed atakami przez sprawdzenie zadeklarowanego rozmiaru zanim zaufamy danym z nagłówka.
+4. `LengthMismatch` oraz `TrailingBytes` oceniają zgodność rozmiaru bufora bez uruchamiania obliczeń sumy kontrolnej.
+5. `CrcMismatch`: weryfikacja spójności danych, wykrywa uszkodzenia danych oraz nieprawidłową kolejność bajtów (np. Little-Endian).
 
 
 
