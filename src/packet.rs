@@ -41,7 +41,8 @@ impl fmt::Display for PacketError {
 // default Rust error implementation
 impl std::error::Error for PacketError {}
 
-use crate::crc::crc16_ccitt_false;
+
+use crate::crc::crc16_ax25;
 
 // Builds a radio packet from payload: [preamble x5] [sync x1] [length x1] [payload xN] [crc_be x2]
 pub fn build(payload: &[u8]) -> Result<Vec<u8>, PacketError> {
@@ -67,7 +68,7 @@ pub fn build(payload: &[u8]) -> Result<Vec<u8>, PacketError> {
     crc_input.push(declared_len);
     crc_input.extend_from_slice(payload);
 
-    let crc = crc16_ccitt_false(&crc_input);
+    let crc = crc16_ax25(&crc_input);
 
     // CRC written as Big-Endian
     packet.extend_from_slice(&crc.to_be_bytes());
@@ -115,7 +116,7 @@ pub fn parse(data: &[u8]) -> Result<RadioPacket, PacketError> {
 
     // CRC verification
     let payload_end = 7 + declared as usize;
-    let expected_crc = crc16_ccitt_false(&data[6..payload_end]);
+    let expected_crc = crc16_ax25(&data[6..payload_end]);
     let packet_crc = u16::from_be_bytes([data[payload_end], data[payload_end + 1]]);
 
     if expected_crc != packet_crc {
