@@ -60,4 +60,26 @@ Kolejność sprawdzania w `parse` ma znaczenie dla stabilności i bezpieczeństw
 - Kod został zweryfikowany za pomocą `clippy` z flagą `-D warnings`.
 - Dodano krótką dokumentację w `lib.rs`.
 
+## 7. `redesign of the frame and CRC algorithm with crc_vectors tests`
+### Zmiana algorytmu z CRC-16/CCITT-FALSE na HDLC/AX.25 FCS:
+wielomian 0x8408, LSB-first, seed 0xFFFF, final XOR 0xFFFF, tablica zgodna z RFC 1549 Appendix A / Dire Wolf
+HDLC (High-Level Data Link Control) standard radiowy na którym bazuje m.in. AX.25
+RFC (Request for Comments) dokumentacja
+FCS (Frame Check Sequence) to suma kontrolna umieszczana na końcu ramki (dla AX.25 16-bitowe CRC)
+| Parameter | Value |
+| --- | --- |
+| Polynomial | `0x8408` (odwrócone `0x1021`) |
+| Initial value | `0xFFFF` |
+| Reflect input | yes (LSB-first) |
+| Reflect output | yes |
+| XOR out | `0xFFFF` |
+| Check (`"123456789"`) | `0x906E` |
+| Bit order | LSB-first |
+
+#### Żeby nie pomieszać kolejności:
+Kategoria |	Za co odpowiada  |	Używane pojęcia |	Gdzie występuje
+| --- | --- | --- | --- |
+| Kolejność bitów | kolejność bitów wewnątrz jednego bajtu w obliczaniu CRC |	LSB-first, MSB-first, RefIn, RefOut, reflected poly 0x8408  | crc16_ax25 |
+|Poziom bajtów | w jakiej kolejności 2 gotowe bajty są obok siebie |	Big-Endian (to_be_bytes), Little-Endian (to_le_bytes) |	 funkcja build() i parse()
+
 

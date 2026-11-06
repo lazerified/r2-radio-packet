@@ -1,4 +1,4 @@
-// table for polynomial 0x8408 (source RFC 1662: https://www.rfc-editor.org/info/rfc1662/)
+// table for polynomial 0x8408 (source RFC 1662 "C.1. FCS table generator": https://www.rfc-editor.org/info/rfc1662/)
 const FCSTAB: [u16; 256] = [
     0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
     0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
