@@ -16,7 +16,8 @@ fn test_crc_standard_vector_123456789() {
 fn test_crc_not_ccitt_false_fcs() {
     // Checking whether CCITT-FALSE is NOT implemented
     assert_ne!(
-        crc16_ax25(b"123456789"), 0x29B1,
+        crc16_ax25(b"123456789"),
+        0x29B1,
         "Checksum matches AX.25 instead of CRC-16/CCITT-FALSE"
     );
 }

@@ -41,7 +41,6 @@ impl fmt::Display for PacketError {
 // default Rust error implementation
 impl std::error::Error for PacketError {}
 
-
 use crate::crc::crc16_ax25;
 
 // Builds a radio packet from payload: [preamble x5] [sync x1] [length x1] [payload xN] [crc_be x2]

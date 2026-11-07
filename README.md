@@ -117,5 +117,5 @@ cargo test
 cargo clippy --all-targets -- -D warnings
 
 # Ensure correct code formatting style
-cargo fmt --all -- --check
+cargo fmt --all --check
 ```

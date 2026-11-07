@@ -1,4 +1,4 @@
-use r2_radio_packet::{build, parse, PacketError};
+use r2_radio_packet::{PacketError, build, parse};
 
 fn main() {
     let tx_frame = build(b"ping").expect("payload within 128-byte limit");
