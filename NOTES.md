@@ -161,3 +161,6 @@ Wytyczne:
 - 128 zer → aaaaaaaaaa7e80 + 128×00 + d834
 
 Dla testu ramki z payload = 128 x 0x00 (bajt length 0x80 + 128 bajtów 0x00) kod zwracał sumę `0x100E` podczas gdy wytyczne oraz sprawdzenie dla kodu z aplikacji Dire Wolf (`fcs_calc.c`) podawały `0xD834` (kod testu powyżej). Weryfikacja algorytmu pokazała błąd w tablicy `FCSTAB`. Pod indeksem 79 znajdowała się wartość `0xba53` zamiast poprawnej `0xbaf3`. Po poprawieniu literówki wyniki testów `test_crc_128_bytes_sequence` (`crc_vectors.rs`) oraz `test_build_128_zeros_payload` (`packet_vectors.rs`) zgadzają się z `fcs_calc.c`.
+
+## 9. enabled packet error handling tests
+Odkomentowałem testy błędów podczas tworzenia pakietów np. błędnej preambuły, długości, pomieszanego CRC i tak dalej. Były niezależne od budowy algorytmu, więc nie wymagały zmian.
