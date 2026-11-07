@@ -37,7 +37,6 @@ fn test_crc_single_ff_byte() {
 }
 
 #[test]
-#[ignore = "wartość dla ciągu (0x00..=0x7F) daje 0x5F7A, a podana wartość to 0xF1B9"]
 fn test_crc_128_bytes_sequence() {
     // sequence of 128 bytes with values 0x00..=0x7F
     let data: Vec<u8> = (0x00..=0x7F).collect();

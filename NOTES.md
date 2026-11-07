@@ -2,7 +2,7 @@
 
 # TODO: pytania z pliku `R2_radio_packet_crc.md`, testy z pliku r2_vectors.json
 
-
+# CRC-16 CCITT-FALSE
 ## Zmiany chronologicznie
 ## 1. `initialize r2-radio-packet library`
 - **Podział modułów** godnie ze specyfikacją moduły `crc` (obliczenia sumy kontrolnej) oraz `packet` (format, serializacja i parsowanie ramki).
@@ -60,12 +60,14 @@ Kolejność sprawdzania w `parse` ma znaczenie dla stabilności i bezpieczeństw
 - Kod został zweryfikowany za pomocą `clippy` z flagą `-D warnings`.
 - Dodano krótką dokumentację w `lib.rs`.
 
+# Branch AX.25 FCS
+Od tej pory każdy commit będzie poprawiał poprzednią realizację projektu tak, aby zmienić algorytm CRC z CCITT-FALSE na AX.25 FCS. Dotychczasowy kod z poprzednim algorytmem będzie zakomentowany jeśli wywołuje błędy, stopniowo wprowadzając poprawki.
 ## 7. `redesign of the frame and CRC algorithm with crc_vectors tests`
 ### Zmiana algorytmu z CRC-16/CCITT-FALSE na HDLC/AX.25 FCS:
-wielomian 0x8408, LSB-first, seed 0xFFFF, final XOR 0xFFFF, tablica zgodna z RFC 1549 Appendix A / Dire Wolf
-HDLC (High-Level Data Link Control) standard radiowy na którym bazuje m.in. AX.25
-RFC (Request for Comments) dokumentacja
-FCS (Frame Check Sequence) to suma kontrolna umieszczana na końcu ramki (dla AX.25 16-bitowe CRC)
+Tablica zgodna z RFC 1549 Appendix A / Dire Wolf
+- HDLC (High-Level Data Link Control) standard radiowy na którym bazuje m.in. AX.25
+- RFC (Request for Comments) dokumentacja
+- FCS (Frame Check Sequence) to suma kontrolna umieszczana na końcu ramki (dla AX.25 16-bitowe CRC)
 | Parameter | Value |
 | --- | --- |
 | Polynomial | `0x8408` (odwrócone `0x1021`) |
@@ -82,4 +84,80 @@ Kategoria |	Za co odpowiada  |	Używane pojęcia |	Gdzie występuje
 | Kolejność bitów | kolejność bitów wewnątrz jednego bajtu w obliczaniu CRC |	LSB-first, MSB-first, RefIn, RefOut, reflected poly 0x8408  | crc16_ax25 |
 |Poziom bajtów | w jakiej kolejności 2 gotowe bajty są obok siebie |	Big-Endian (to_be_bytes), Little-Endian (to_le_bytes) |	 funkcja build() i parse()
 
+### Zawartość testu wektorów referencyjnych z kodem Dire Wolf:
 
+```c
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include "fcs_calc.h"
+
+int main(void) {
+    printf(" Dire Wolf data verification with fcs_calc \n\n");
+
+    // reference vectors
+    printf("\"\"                 -> 0x%04X\n", fcs_calc((unsigned char*)"", 0));
+    printf("\"123456789\"        -> 0x%04X\n", fcs_calc((unsigned char*)"123456789", 9));
+    printf("\"A\"                -> 0x%04X\n", fcs_calc((unsigned char*)"A", 1));
+
+    unsigned char b00 = 0x00;
+    unsigned char bff = 0xFF;
+    printf("0x00               -> 0x%04X\n", fcs_calc(&b00, 1));
+    printf("0xFF               -> 0x%04X\n", fcs_calc(&bff, 1));
+
+    // 128-byte sequence
+    unsigned char seq[128];
+    for (int i = 0; i < 128; i++) seq[i] = (unsigned char)i;
+    printf("0x00..=0x7F [128B] -> 0x%04X (dec: %u)\n", fcs_calc(seq, 128), fcs_calc(seq, 128));
+    printf("0x00..0x7F  [127B] -> 0x%04X (dec: %u)\n", fcs_calc(seq, 127), fcs_calc(seq, 127));
+
+    // packets ([length] + payload)
+    unsigned char pkt_empty[] = { 0x00 };
+    printf("Pkt empty ([0x00]) -> 0x%04X\n", fcs_calc(pkt_empty, 1));
+
+    unsigned char pkt_ping[] = { 0x04, 'p', 'i', 'n', 'g' };
+    printf("Pkt \"ping\"        -> 0x%04X\n", fcs_calc(pkt_ping, 5));
+
+    unsigned char pkt_128zeros[129];
+    pkt_128zeros[0] = 0x80;
+    memset(&pkt_128zeros[1], 0x00, 128);
+    printf("Pkt 128 zeros      -> 0x%04X\n", fcs_calc(pkt_128zeros, 129));
+
+    return 0;
+}
+```
+Wyniki testu Dire Wolf:
+
+```sh
+kornel@Mac ~ % cd ~/dev/direwolf-official && clang -O2 test_wektory.c src/fcs_calc.c -Isrc -o test_wektory && ./test_wektory
+```
+```
+ Dire Wolf data verification with fcs_calc
+
+
+""                 -> 0x0000
+"123456789"        -> 0x906E
+"A"                -> 0xA3F5
+0x00               -> 0xF078
+0xFF               -> 0xFF00
+0x00..=0x7F [128B] -> 0xF1B9 (dec: 61881)
+0x00..0x7F  [127B] -> 0xC96E (dec: 51566)
+Pkt empty ([0x00]) -> 0xF078
+Pkt "ping"        -> 0xC98D
+Pkt 128 zeros      -> 0xD834
+```
+
+Wykorzystanie faktu, że operacja liczenia sumy kontrolnej jest liniowa: $CRC(A \oplus B) = CRC(A) \oplus CRC(B)$ pozwala na poniższą optymalizację (działanie bajt po bajcie z tabelą, zamiast bit po bicie).
+
+### Na czym polega zoptymalizowanie z działania bit po bicie na przejście do wersji tabelarycznej?
+Pętla wygląda tak, że zaczynam z init_value na CRC, czyli `0xFFFF`. I pierwszy krok: przesuwam o bajt w prawo (lewa strona XOR'a). Drugi krok: biorę początkową wartość, `0xFFFF`, liczę XOR z bajtem payload, sprawdzam jaki jest wynik, oddzielam tak, żeby było do 255. Trzeci krok: poprzedni wynik wrzucam do tabeli, która mówi jaki jest wynik dla   XOR wyliczonego bajtu z wielomianem. Czwarty krok: nowy przesunięty o bajt CRC=`0xFFFF` liczę XOR z wartością pobraną z tablicy -> otrzymuję nowy CRC. Pętla powtarza się dla nowego CRC i bierze kolejny bajt z payload. Po wyjściu z pętli XOR-out, czyli XOR wartości z 4. kroku i `0xFFFF`, czyli zanegowanie każdego bitu.
+
+## 8. update packet build vectors for AX.25 FCS
+Poprawiona budowa sprawdzanych pakietów aby zapewnić zgodność z algorytmem AX.25 FCS.
+Wytyczne:
+- "" → aaaaaaaaaa7e00f078,
+- "ping" → aaaaaaaaaa7e0470696e67c98d,
+- "123456789" → aaaaaaaaaa7e0931323334353637383907ff,
+- 128 zer → aaaaaaaaaa7e80 + 128×00 + d834
+
+Dla testu ramki z payload = 128 x 0x00 (bajt length 0x80 + 128 bajtów 0x00) kod zwracał sumę `0x100E` podczas gdy wytyczne oraz sprawdzenie dla kodu z aplikacji Dire Wolf (`fcs_calc.c`) podawały `0xD834` (kod testu powyżej). Weryfikacja algorytmu pokazała błąd w tablicy `FCSTAB`. Pod indeksem 79 znajdowała się wartość `0xba53` zamiast poprawnej `0xbaf3`. Po poprawieniu literówki wyniki testów `test_crc_128_bytes_sequence` (`crc_vectors.rs`) oraz `test_build_128_zeros_payload` (`packet_vectors.rs`) zgadzają się z `fcs_calc.c`.
