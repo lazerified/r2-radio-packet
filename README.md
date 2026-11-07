@@ -1,69 +1,71 @@
 # r2-radio-packet
-
-A safe and panic-free Rust crate for encoding and decoding physical-layer radio packets secured with CRC-16/CCITT-FALSE checksum algorithm.
+A safe and panic-free Rust crate for encoding and decoding physical-layer radio packets secured by the AX.25 / HDLC CRC-16 (FCS) checksum algorithm.
 
 ## Wire format
-
 | preamble | sync | length | payload | crc |
 | --- | --- | --- | --- | --- |
 | 5 x 0xAA | 1 x 0x7E | 1 byte | 0..=128 bytes | 2 bytes |
-
 - preamble - used to alert the receiver and synchronize bit clocks,
 - sync - byte indicating the start of packet framing,
 - length - byte indicating payload's size,
 - payload - sent data,
-- crc - 16-bit CCITT-FALSE, computed only over `[length] + payload` and transmitted in Big-Endian
+- crc - 16-bit AX.25 FCS, computed only over `[length] + payload` and transmitted in Big-Endian
+
 
 ### Detailed structure of the CRC
-
 | Parameter | Value |
 | --- | --- |
-| Polynomial | `0x1021` |
+| Polynomial | `0x8408` (reflected `0x1021`) |
 | Initial value | `0xFFFF` |
-| Reflect input | no |
-| Reflect output | no |
-| XOR out | `0x0000` |
-| Check (`"123456789"`) | `0x29B1` |
+| Reflect input | yes |
+| Reflect output | yes |
+| XOR out | `0xFFFF` |
+| Check (`"123456789"`) | `0x906E` |
 | Bit order | MSB-first |
+| Table implementation | [RFC 1662 Appendix C.2](https://www.rfc-editor.org/info/rfc1662/#appendix-C.2) / [Dire Wolf](https://github.com/wb2osz/direwolf) |
+
+
+### FCS lookup table (`FCSTAB`)
+The implementation uses a 256-entry lookup table (`FCSTAB`) based on RFC 1662 and Dire Wolf `fcs_calc`. Instead of calculating polynomial division bit-by-bit (8 iterations per byte), it precomputes the cumulative XOR modifications () for all 256 possible byte states, updating the register in a single constant-time table lookup.
+
 
 ### Hex representation example
 Encoding payload b"ping" (0x70, 0x69, 0x6E, 0x67):
 ```text
-AA AA AA AA AA   7E   04   70 69 6E 67   EB E1
+AA AA AA AA AA   7E   04   70 69 6E 67   C9 8D
 |____________|   |    |    |_________|   |___|
    Preamble     Sync Len     Payload      CRC (over 04 70 69 6E 67)
 ```
 
-#### How the CRC value `0xEBE1` is calculated
+#### How the CRC value `0xC98D` is calculated
+- Computed over [length byte] + payload (`0x04`, `0x70`, `0x69`, `0x6E`, `0x67`). Preamble and sync are ignored.
+- Initial register = `0xFFFF`.
+- For each byte in payload calculate `FCSTAB` lookup a table index and shift register:
+    -  table index is a XOR of current FCS and LSB of payload, afterwards do a bitwise AND which ensures the 0-255 index range
+    -  Shift register right by 8 bits and XOR with precomputed table value
+- After the last loop iteration XOR the output with `0xFFFF` (XOR out = `0xFFFF`)
 
-- Computed over [length byte] + payload (0x04, 0x70, 0x69, 0x6E, 0x67). Preamble and sync are ignored.
-- Initial register = 0xFFFF.
-- For each byte XOR with high byte (crc ^= byte << 8), then process 8 bits:
-  - If MSb is 1 then (crc << 1) ^ 0x1021
-  - If MSb is 0 then crc << 1
 
-**Step-by-step register progression:**
-
-Step | Input Byte |	Register State (Hex)
-| --- | --- | --- |
-Init	|	- | 0xFFFF
-1 |	0x04 (length) |	0x24C8
-2	| 0x70 ('p')	| 0xDDB1
-3	| 0x69 ('i')	| 0xA26F
-4	| 0x6E ('n')	| 0x56E1
-5	| 0x67 ('g')	| 0xEBE1
-
-_Stored as Big-Endian (high byte 0xEB first, then 0xE1)._
-
-## CRC-16 Reference Vectors
+## Reference Vectors
+### CRC-16 AX.25 FCS (`crc16_ax25`)
 | Input | CRC |
 |-------|-----|
-| `""` (empty) | `0xFFFF` |
-| `"123456789"` | `0x29B1` |
-| `"A"` (`0x41`) | `0xB915` |
-| `0x00` | `0xE1F0` |
+| `""` (empty) | `0x0000` |
+| `"123456789"` | `0x906E` |
+| `"A"` (`0x41`) | `0xA3F5` |
+| `0x00` | `0xF078` |
 | `0xFF` | `0xFF00` |
-| 128 bytes `0x00..0x7F` | `0x1800` |
+| 128 bytes `0x00..0x7F` | `0xF1B9` |
+
+
+### Packets (`build` / `parse`)
+| Payload | Packet (hexadecimal) | CRC |
+| --- | --- | --- |
+| "" | `aaaaaaaaaa7e00f078` | `0xF078` |
+| "ping" | `aaaaaaaaaa7e0470696e67c98d` | `0xC98D` |
+| "123456789" | `aaaaaaaaaa7e0931323334353637383907ff` | `0x07FF`|
+| 128x `0x00` | `aaaaaaaaaa7e80` + 128x `00` + `d834` | `0xD834` |
+
 
 ## Safety measures
 - Usage of `#![forbid(unsafe_code)]` attribute means zero `unsafe` blocks, which verifies memory safety, bounds checks, and pointer lifetimes at compile time.

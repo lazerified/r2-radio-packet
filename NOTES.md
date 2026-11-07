@@ -1,7 +1,5 @@
 # NOTES: r2-radio-packet
 
-# TODO: pytania z pliku `R2_radio_packet_crc.md`, testy z pliku r2_vectors.json
-
 # CRC-16 CCITT-FALSE
 ## Zmiany chronologicznie
 ## 1. `initialize r2-radio-packet library`
@@ -62,6 +60,7 @@ Kolejność sprawdzania w `parse` ma znaczenie dla stabilności i bezpieczeństw
 
 # Branch AX.25 FCS
 Od tej pory każdy commit będzie poprawiał poprzednią realizację projektu tak, aby zmienić algorytm CRC z CCITT-FALSE na AX.25 FCS. Dotychczasowy kod z poprzednim algorytmem będzie zakomentowany jeśli wywołuje błędy, stopniowo wprowadzając poprawki.
+
 ## 7. `redesign of the frame and CRC algorithm with crc_vectors tests`
 ### Zmiana algorytmu z CRC-16/CCITT-FALSE na HDLC/AX.25 FCS:
 Tablica zgodna z RFC 1549 Appendix A / Dire Wolf
@@ -150,9 +149,9 @@ Pkt 128 zeros      -> 0xD834
 Wykorzystanie faktu, że operacja liczenia sumy kontrolnej jest liniowa: $CRC(A \oplus B) = CRC(A) \oplus CRC(B)$ pozwala na poniższą optymalizację (działanie bajt po bajcie z tabelą, zamiast bit po bicie).
 
 ### Na czym polega zoptymalizowanie z działania bit po bicie na przejście do wersji tabelarycznej?
-Pętla wygląda tak, że zaczynam z init_value na CRC, czyli `0xFFFF`. I pierwszy krok: przesuwam o bajt w prawo (lewa strona XOR'a). Drugi krok: biorę początkową wartość, `0xFFFF`, liczę XOR z bajtem payload, sprawdzam jaki jest wynik, oddzielam tak, żeby było do 255. Trzeci krok: poprzedni wynik wrzucam do tabeli, która mówi jaki jest wynik dla   XOR wyliczonego bajtu z wielomianem. Czwarty krok: nowy przesunięty o bajt CRC=`0xFFFF` liczę XOR z wartością pobraną z tablicy -> otrzymuję nowy CRC. Pętla powtarza się dla nowego CRC i bierze kolejny bajt z payload. Po wyjściu z pętli XOR-out, czyli XOR wartości z 4. kroku i `0xFFFF`, czyli zanegowanie każdego bitu.
+Pętla wygląda tak, że zaczynam z init_value na CRC, czyli `0xFFFF`. I pierwszy krok: przesuwam o bajt w prawo (lewa strona XOR'a). Drugi krok: biorę początkową wartość, `0xFFFF`, liczę XOR z bajtem payload, sprawdzam jaki jest wynik, oddzielam tak, żeby było do 255. Trzeci krok: poprzedni wynik wrzucam do tabeli, która mówi jaki jest wynik dla złożonego 8-krotnego przejścia przesunięć i nakładania (bądź nie) wielomianu `0x8408` dla wyliczonego bajtu indeksu. Czwarty krok: nowy przesunięty o bajt CRC=`0xFFFF` liczę XOR z wartością pobraną z tablicy -> otrzymuję nowy CRC. Pętla powtarza się dla nowego CRC i bierze kolejny bajt z payload. Po wyjściu z pętli XOR-out, czyli XOR wartości z 4. kroku i `0xFFFF`, czyli zanegowanie każdego bitu.
 
-## 8. update packet build vectors for AX.25 FCS
+## 8. `update packet build vectors for AX.25 FCS`
 Poprawiona budowa sprawdzanych pakietów aby zapewnić zgodność z algorytmem AX.25 FCS.
 Wytyczne:
 - "" → aaaaaaaaaa7e00f078,
@@ -162,5 +161,21 @@ Wytyczne:
 
 Dla testu ramki z payload = 128 x 0x00 (bajt length 0x80 + 128 bajtów 0x00) kod zwracał sumę `0x100E` podczas gdy wytyczne oraz sprawdzenie dla kodu z aplikacji Dire Wolf (`fcs_calc.c`) podawały `0xD834` (kod testu powyżej). Weryfikacja algorytmu pokazała błąd w tablicy `FCSTAB`. Pod indeksem 79 znajdowała się wartość `0xba53` zamiast poprawnej `0xbaf3`. Po poprawieniu literówki wyniki testów `test_crc_128_bytes_sequence` (`crc_vectors.rs`) oraz `test_build_128_zeros_payload` (`packet_vectors.rs`) zgadzają się z `fcs_calc.c`.
 
-## 9. enabled packet error handling tests
+## 9. `enabled packet error handling tests`
 Odkomentowałem testy błędów podczas tworzenia pakietów np. błędnej preambuły, długości, pomieszanego CRC i tak dalej. Były niezależne od budowy algorytmu, więc nie wymagały zmian.
+
+## 10. `README updates according with AX.25 FCS and other minor changes`
+uwaga: Pominąłem testowanie pliku `r2_vectors.json` zawartego w `R2_radio_packet_crc.md`, jako że dotyczył algorytmu CRC-16 CCITT-FALSE.
+- Nowy plik `QUESTIONS.md` z pytaniami ze specyfikacji zadania `R2_radio_packet_crc.md`
+- poprawiona spójność wyjaśnień w `NOTES.md`
+- zaktualizowane `README.md`:
+    - dodany opis tablicy `FCSTAB`
+    - wyjaśniony algorytm AX.25 FCS wraz z przykładem
+    - zmieniony opis struktury i szczegółów implementacyjnych algorytmu, wektorów testowych (referencyjnych)
+- przykład kodu z `README.md` dodany do `main.rs`
+- zaktualizowana krótka dokumentacja w `lib.rs`.
+
+
+
+
+
