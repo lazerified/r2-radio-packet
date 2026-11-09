@@ -21,7 +21,7 @@ A safe and panic-free Rust crate for encoding and decoding physical-layer radio 
 | Reflect output | yes |
 | XOR out | `0xFFFF` |
 | Check (`"123456789"`) | `0x906E` |
-| Bit order | MSB-first |
+| Bit order | LSB-first |
 | Table implementation | [RFC 1662 Appendix C.2](https://www.rfc-editor.org/info/rfc1662/#appendix-C.2) / [Dire Wolf](https://github.com/wb2osz/direwolf) |
 
 

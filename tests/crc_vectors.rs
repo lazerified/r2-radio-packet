@@ -3,7 +3,7 @@ use r2_radio_packet::crc::crc16_ax25;
 
 #[test]
 fn test_crc_empty_input() {
-    // Returns Initial Value 0xFFFF and doesn't panic
+    // empty input => skips loop => returns init_value ^ xorout = 0x0000 and doesn't panic
     assert_eq!(crc16_ax25(b""), 0x0000);
 }
 

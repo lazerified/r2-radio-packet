@@ -175,6 +175,14 @@ uwaga: Pominąłem testowanie pliku `r2_vectors.json` zawartego w `R2_radio_pack
 - przykład kodu z `README.md` dodany do `main.rs`
 - zaktualizowana krótka dokumentacja w `lib.rs`.
 
+## 11. `finishing touches: added a git hook and fixed minor issues`
+- poprawiono pozostawione cechy specyfikacji z poprzedniego algorytmu (`README.md`: MSB-First -> LSB-First, `crc_vectors.rs`: test returns `0xFFFF` -> `0x0000`)
+- dodany skrypt hooka w ścieżce `githooks/pre-commit` (włączony przez `git config core.hooksPath githooks`).
+- Skrypt automatyzuje weryfikację jakości kodu przed każdym commitem (`set -e`):
+  1. `cargo fmt --all` z dołączaniem poprawionych plików (`git add -u`).
+  2. `cargo clippy --all-targets --all-features -- -D warnings` blokuje commit przy wyrzuceniu jakiegokolwiek ostrzeżenia .
+  3. `cargo test --quiet` potwierdza czy przechodzą testy, jak nie, commit zostanie odrzucony.
+Żeby pominąć weryfikację przez `precommit` należy skorzystać z polecenia `git commit -n` (`--no-verify`).
 
 
 
